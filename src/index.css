@@ -1,81 +1,122 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --bg-image: url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=2000&q=80');
-  --app-bg: rgba(255, 255, 255, 0.85);
-  --text-primary: #1e293b;
-  --text-secondary: #64748b;
+  /* Light Theme Palette */
+  --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  
+  --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  --app-bg: rgba(255, 255, 255, 0.75);
+  --card-bg: rgba(255, 255, 255, 0.9);
+  --card-border: rgba(255, 255, 255, 0.5);
+  
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-light: rgba(79, 70, 229, 0.1);
+  
+  --success: #10b981;
+  --success-light: rgba(16, 185, 129, 0.1);
+  --danger: #f43f5e;
+  --danger-light: rgba(244, 63, 94, 0.1);
+  --warning: #f59e0b;
+  --warning-light: rgba(245, 158, 11, 0.1);
+  
   --border-color: #e2e8f0;
-  --card-bg: #ffffff;
-  --red-color: #ef4444;
-  --green-color: #10b981;
-  --blue-color: #3b82f6;
-  --category-housing: #3b82f6;
-  --category-food: #f43f5e;
-  --category-utilities: #eab308;
-  --category-transport: #a855f7;
-  --category-entertainment: #f97316;
+  --input-bg: #f8fafc;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 :root[data-theme="dark"] {
-  --bg-image: url('https://images.unsplash.com/photo-1531366936337-7785a0ce5660?auto=format&fit=crop&w=2000&q=80');
-  --app-bg: rgba(30, 41, 59, 0.85);
+  /* Dark Theme Palette */
+  --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+  --app-bg: rgba(15, 23, 42, 0.75);
+  --card-bg: rgba(30, 41, 59, 0.85);
+  --card-border: rgba(255, 255, 255, 0.05);
+  
   --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
+  --text-secondary: #cbd5e1;
+  --text-muted: #64748b;
+  
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --primary-light: rgba(99, 102, 241, 0.15);
+  
+  --success: #34d399;
+  --success-light: rgba(52, 211, 153, 0.15);
+  --danger: #fb7185;
+  --danger-light: rgba(251, 113, 133, 0.15);
+  --warning: #fbbf24;
+  --warning-light: rgba(251, 191, 36, 0.15);
+  
   --border-color: #334155;
-  --card-bg: #0f172a;
-  /* Adjust colors a bit for dark mode if needed */
-  --red-color: #f87171;
-  --green-color: #34d399;
+  --input-bg: #1e293b;
 }
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-}
-
-/* Fix mobile fixed scrolling background issue */
-body::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: var(--bg-image);
-  background-size: cover;
-  background-position: center;
-  z-index: -1;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-family);
   min-height: 100vh;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   color: var(--text-primary);
-  padding: 1rem;
-  background-color: #f3f4f6;
-}
-
-:root[data-theme="dark"] body {
-  background-color: #0f172a;
-}
-
-/* Media Query hack: Disable 'fixed' behavior on smaller screens */
-@media (max-width: 768px) {
-  body {
-    position: relative;
-  }
-  body::before {
-    position: absolute;
-    height: 100%;
-  }
+  background: var(--bg-gradient);
+  background-attachment: fixed;
+  padding: 2rem 1rem;
+  line-height: 1.5;
+  overflow-y: scroll;
 }
 
 #root {
   width: 100%;
-  max-width: 800px;
+  max-width: 1100px; /* Wider for full dashboard app layout */
+  margin: 0 auto;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Smooth active focus state */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* Entry Animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
