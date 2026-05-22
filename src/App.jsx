@@ -251,7 +251,11 @@ function BudgetifyMain({ isClerk, user, onLogout }) {
 
   // PWA Installation Trigger States
   const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [showInstallBtn, setShowInstallBtn] = useState(false);
+  const [pwaModalOpen, setPwaModalOpen] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  });
   const [isIOS] = useState(() => {
     if (typeof window === 'undefined' || !window.navigator) return false;
     const userAgent = window.navigator.userAgent.toLowerCase();
@@ -264,23 +268,31 @@ function BudgetifyMain({ isClerk, user, onLogout }) {
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      setShowInstallBtn(true);
+    };
+
+    const handleAppInstalled = () => {
+      console.log('PWA was installed');
+      setIsStandalone(true);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
   const handleInstallApp = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`PWA Installation outcome: ${outcome}`);
-    setDeferredPrompt(null);
-    setShowInstallBtn(false);
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`PWA Installation outcome: ${outcome}`);
+      setDeferredPrompt(null);
+    } else {
+      setPwaModalOpen(true);
+    }
   };
 
 
@@ -1313,7 +1325,16 @@ function BudgetifyMain({ isClerk, user, onLogout }) {
           <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
             Download and run Budgetify as a standalone desktop or mobile application. Run directly from your dock or home screen with full offline access.
           </p>
-          {showInstallBtn ? (
+          {isStandalone ? (
+            <div className="pwa-install-action-box" style={{ borderLeft: '3px solid var(--success)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontWeight: '700', fontSize: '13px', color: 'var(--success)' }}>✓ App Installed / Standalone Active</span>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                  Budgetify is fully offline-enabled and running in standalone mode. To install on another browser, look for the install icon in your URL search bar.
+                </p>
+              </div>
+            </div>
+          ) : deferredPrompt ? (
             <div className="pwa-install-action-box">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <span style={{ fontWeight: '700', fontSize: '13px', color: 'var(--text-primary)' }}>App Install Available</span>
@@ -1338,13 +1359,19 @@ function BudgetifyMain({ isClerk, user, onLogout }) {
               </div>
             </div>
           ) : (
-            <div className="pwa-install-action-box" style={{ borderLeft: '3px solid var(--success)' }}>
+            <div className="pwa-install-action-box">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontWeight: '700', fontSize: '13px', color: 'var(--success)' }}>✓ App Installed / Standalone Active</span>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                  Budgetify is fully offline-enabled and running in standalone mode. To install on another browser, look for the install icon in your URL search bar.
-                </p>
+                <span style={{ fontWeight: '700', fontSize: '13px', color: 'var(--text-primary)' }}>Install Budgetify</span>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Learn how to add the application to your desktop dock or home screen.</p>
               </div>
+              <button className="btn-primary btn-pwa-action" onClick={() => setPwaModalOpen(true)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                View Install Guide
+              </button>
             </div>
           )}
         </div>
@@ -1415,6 +1442,109 @@ function BudgetifyMain({ isClerk, user, onLogout }) {
           <button className="btn-danger" onClick={onLogout} style={{ padding: '8px 20px', fontSize: '13px', borderRadius: '8px' }}>
             🚪 Sign Out of Account
           </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPwaInstructionModal = () => {
+    if (!pwaModalOpen) return null;
+
+    // Detect browser / platform
+    const ua = typeof window !== 'undefined' ? window.navigator.userAgent.toLowerCase() : '';
+    const isIOSMobile = /iphone|ipad|ipod/.test(ua);
+    const isSafariBrowser = /safari/.test(ua) && !/crios/.test(ua) && !/chrome/.test(ua);
+    const isFirefoxBrowser = /firefox/.test(ua);
+
+    return (
+      <div className="modal-overlay" onClick={() => setPwaModalOpen(false)}>
+        <div className="modal-content glass-card pwa-guide-modal" onClick={e => e.stopPropagation()}>
+          <button className="modal-close" onClick={() => setPwaModalOpen(false)} aria-label="Close modal">&times;</button>
+          <div className="modal-header" style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+            <h3 className="modal-title" style={{ margin: 0, fontSize: '20px', fontWeight: '800', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, height: 22 }}>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Install Budgetify
+            </h3>
+          </div>
+
+          <div style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: '4px', textAlign: 'left' }}>
+            {isIOSMobile ? (
+              <div className="pwa-guide-steps">
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.5' }}>
+                  To run Budgetify as a standalone mobile app on iOS Safari:
+                </p>
+                <ol className="pwa-steps-list" style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <li style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
+                    Tap the <strong>Share</strong> button <span style={{ fontSize: '16px' }}>⎋</span> in Safari's bottom toolbar.
+                  </li>
+                  <li style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
+                    Scroll down the share sheet and select <strong>Add to Home Screen</strong> <span style={{ fontSize: '16px' }}>⊞</span>.
+                  </li>
+                  <li style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
+                    Tap <strong>Add</strong> in the top-right corner to complete the installation.
+                  </li>
+                </ol>
+              </div>
+            ) : isSafariBrowser ? (
+              <div className="pwa-guide-steps">
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.5' }}>
+                  To install Budgetify on Safari for macOS:
+                </p>
+                <ol className="pwa-steps-list" style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <li style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
+                    Click the <strong>File</strong> menu in the Safari top menu bar.
+                  </li>
+                  <li style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
+                    Select <strong>Add to Dock...</strong>.
+                  </li>
+                  <li style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
+                    Confirm the app name and click <strong>Add</strong> to put it directly in your Dock.
+                  </li>
+                </ol>
+              </div>
+            ) : isFirefoxBrowser ? (
+              <div className="pwa-guide-steps">
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.5' }}>
+                  Firefox does not support programmatic app installation, but you can easily use standard Chromium browsers:
+                </p>
+                <ol className="pwa-steps-list" style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <li style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
+                    Open Budgetify in <strong>Google Chrome</strong>, <strong>Microsoft Edge</strong>, or <strong>Brave</strong>.
+                  </li>
+                  <li style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
+                    Click the <strong>Install</strong> icon in the address bar or the download FAB in the bottom right corner to install directly.
+                  </li>
+                </ol>
+              </div>
+            ) : (
+              <div className="pwa-guide-steps">
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.5' }}>
+                  Follow these simple steps to install Budgetify on your device:
+                </p>
+                <ol className="pwa-steps-list" style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <li style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
+                    Look at your browser's address bar (at the top-right) and locate the <strong>Install App</strong> icon (usually a computer screen with a downward arrow, or a '+' plus symbol).
+                  </li>
+                  <li style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
+                    Alternatively, click the three dots/settings icon in the browser menu and select <strong>Save and share → Install page...</strong> (or <strong>Install Budgetify...</strong>).
+                  </li>
+                  <li style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
+                    Confirm the installation prompt to add Budgetify to your dock, desktop, or home screen.
+                  </li>
+                </ol>
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
+            <button className="btn-primary" onClick={() => setPwaModalOpen(false)} style={{ padding: '8px 16px', borderRadius: '10px' }}>
+              Got It
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -1531,18 +1661,18 @@ function BudgetifyMain({ isClerk, user, onLogout }) {
             )}
           </div>
 
-          {showInstallBtn && (
+          {!isStandalone && (
             <button 
               className="btn-pwa-install" 
               onClick={handleInstallApp}
-              title="Download Desktop App"
+              title="Download App"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
-              Download Desktop App
+              Download App
             </button>
           )}
 
@@ -1646,8 +1776,8 @@ function BudgetifyMain({ isClerk, user, onLogout }) {
         {activeTab === 'settings' && renderSettings()}
       </main>
 
-      {showInstallBtn && (
-        <button className="fab-download-btn" onClick={handleInstallApp} title="Download Desktop App" aria-label="Download Desktop App">
+      {!isStandalone && (
+        <button className="fab-download-btn" onClick={handleInstallApp} title="Download App" aria-label="Download App">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
             <polyline points="7 10 12 15 17 10" />
@@ -1999,6 +2129,7 @@ function BudgetifyMain({ isClerk, user, onLogout }) {
           </div>
         </div>
       )}
+      {renderPwaInstructionModal()}
     </div>
   );
 }
