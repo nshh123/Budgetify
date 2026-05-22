@@ -1,0 +1,25 @@
+{
+  "short_name": "Budgetify",
+  "name": "Budgetify — Premium Financial Suite",
+  "description": "Take control of your personal finances with Budgetify, a premium glassmorphic personal budget planner featuring visual ledgers, savings goals, and smart alerts.",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0b0f19",
+  "theme_color": "#4f46e5",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "categories": ["finance", "utilities"]
+}
