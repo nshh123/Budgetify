@@ -3,8 +3,8 @@
   display: flex;
   min-height: 85vh;
   background: var(--app-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--card-border);
   border-radius: 24px;
   box-shadow: var(--shadow-xl);
@@ -965,10 +965,144 @@ input:checked + .slider-switch:before {
   height: 24px;
 }
 
-/* Responsiveness overrides */
+/* ==========================================
+   STUNNING GLASSMORPHIC AUTH LAYOUTS
+   ========================================== */
+.auth-gate-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh;
+  width: 100%;
+  padding: 20px;
+}
+
+.auth-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 28px;
+  padding: 40px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: var(--shadow-xl);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  text-align: center;
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.auth-header-logo {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, var(--primary) 0%, #a855f7 100%);
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 800;
+  font-size: 28px;
+  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.3);
+  margin: 0 auto 24px auto;
+}
+
+.auth-title {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.75px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.auth-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-bottom: 32px;
+}
+
+.auth-sandbox-badge {
+  background: var(--warning-light);
+  border: 1px solid var(--warning);
+  color: var(--warning);
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  line-height: 1.4;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.auth-sandbox-badge code {
+  background: rgba(0,0,0,0.05);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+:root[data-theme="dark"] .auth-sandbox-badge code {
+  background: rgba(255,255,255,0.1);
+}
+
+.auth-btn-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  margin: 20px 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.auth-divider::before, .auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background-color: var(--border-color);
+}
+
+.auth-divider::before { margin-right: 12px; }
+.auth-divider::after { margin-left: 12px; }
+
+/* Custom Clerk avatar image sizes */
+.clerk-user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid var(--primary);
+  transition: transform 0.2s;
+}
+
+.clerk-user-avatar:hover {
+  transform: scale(1.05);
+}
+
+/* ==========================================
+   EXCEPTIONAL SMARTPHONE VIEWPORT TUNING
+   ========================================== */
+.app-sidebar-hidden {
+  display: inline;
+}
+
+.mobile-header-profile {
+  display: none;
+}
+
 @media (max-width: 768px) {
   body {
-    padding: 0 0 80px 0; /* Clear space for bottom-nav */
+    padding: 0 0 72px 0; /* Clears bottom menu spacing */
+    min-height: 100vh;
   }
 
   #root {
@@ -980,32 +1114,198 @@ input:checked + .slider-switch:before {
     min-height: 100vh;
     border-radius: 0;
     border: none;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  .app-frame::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--app-bg);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    z-index: -1;
   }
 
   .app-sidebar {
-    display: none; /* Hide sidebar on mobile */
+    display: none; /* Mobile hides standard sidebar */
   }
 
   .bottom-nav {
-    display: flex; /* Show bottom tab menu */
+    display: flex; /* Mobile tab menus */
+    background: var(--card-bg);
+    border-top: 1px solid var(--border-color);
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.03);
+    padding: 0 8px;
   }
 
   .app-main {
-    padding: 24px 16px;
+    padding: 20px 14px;
     max-height: none;
     overflow-y: visible;
   }
 
   .view-header {
-    margin-bottom: 24px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
 
+  .view-title {
+    font-size: 22px;
+    letter-spacing: -0.5px;
+  }
+
+  .view-subtitle {
+    font-size: 11px;
+  }
+
+  .app-sidebar-hidden {
+    display: none; /* Hides text tags like "Active Month" */
+  }
+
+  /* Metric cards spacing for smartphones */
   .metrics-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .metric-card {
+    padding: 16px 20px;
+    min-height: 96px;
+    border-radius: 16px;
+  }
+
+  .metric-value {
+    font-size: 22px;
+    margin-top: 6px;
+  }
+
+  .metric-meta {
+    margin-top: 4px;
+    font-size: 11px;
+  }
+
+  /* Compact glass card layout for phones */
+  .glass-card {
+    padding: 18px 16px;
+    border-radius: 18px;
+    margin-bottom: 16px;
+  }
+
+  /* Donut chart scales slightly smaller on tight viewports */
+  .chart-svg-container {
+    width: 170px;
+    height: 170px;
+  }
+
+  /* Transaction card spacing on phones */
+  .transaction-card {
+    padding: 12px 14px;
+    border-radius: 14px;
+  }
+
+  .category-icon-box {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    font-size: 15px;
+  }
+
+  .transaction-desc {
+    font-size: 14px;
+  }
+
+  .transaction-meta-row {
+    font-size: 11px;
+  }
+
+  .transaction-rich-amount {
+    font-size: 14px;
   }
 
   .fab-btn {
-    bottom: 80px; /* Stand clear of bottom navigation */
-    right: 20px;
+    bottom: 84px; /* Floats perfectly safe above the bottom navigation menu */
+    right: 16px;
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+    box-shadow: 0 4px 16px rgba(79, 70, 229, 0.3);
+  }
+
+  .modal-content {
+    padding: 24px 20px;
+    border-radius: 20px;
+    max-width: 95%;
+  }
+
+  .modal-title {
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+
+  .form-group {
+    margin-bottom: 14px;
+  }
+
+  .form-input, .form-select {
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+
+  /* Mobile profile button placement in headers */
+  .mobile-header-profile {
+    display: flex;
+    align-items: center;
+  }
+
+  /* Savings grid on smartphones */
+  .goals-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .goal-card {
+    padding: 16px;
+    min-height: 150px;
+    border-radius: 16px;
+  }
+
+  .goal-title {
+    font-size: 15px;
+  }
+
+  .goal-current-amount {
+    font-size: 16px;
+  }
+
+  .goal-actions {
+    margin-top: 12px;
+  }
+
+  .goal-btn-action {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  /* Settings lists adjustment */
+  .settings-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .settings-action-card {
+    padding: 16px;
+    min-height: 100px;
+  }
+
+  .settings-action-desc {
+    margin-bottom: 12px;
   }
 }

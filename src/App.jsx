@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import DonutChart from './components/DonutChart';
+import { SignedIn, SignedOut, UserButton, useUser, useClerk, SignInButton, SignUpButton } from '@clerk/clerk-react';
 
 // ==========================================
 // CUSTOM PREMIUM REACT SVG ICONS (Self-contained)
@@ -105,10 +106,142 @@ const getTransactionMonth = (tx) => {
   return tx.timestamp.slice(0, 7);
 };
 
-function App() {
-  // ==========================================
-  // STATE MANAGEMENT
-  // ==========================================
+// ==========================================
+// DYNAMIC APP CONTAINER WRAPPER
+// ==========================================
+function App({ isClerkConfigured }) {
+  const [sandboxLoggedIn, setSandboxLoggedIn] = useState(() => {
+    return localStorage.getItem('budgetify_sandbox_logged_in') === 'true';
+  });
+  const [sandboxUser, setSandboxUser] = useState(() => {
+    return localStorage.getItem('budgetify_sandbox_user') || 'Guest Developer';
+  });
+
+  if (!isClerkConfigured) {
+    if (!sandboxLoggedIn) {
+      return (
+        <SandboxLogin 
+          onLogin={(username) => {
+            localStorage.setItem('budgetify_sandbox_logged_in', 'true');
+            localStorage.setItem('budgetify_sandbox_user', username);
+            setSandboxUser(username);
+            setSandboxLoggedIn(true);
+          }} 
+        />
+      );
+    }
+    return (
+      <BudgetifyMain 
+        isClerk={false} 
+        user={{ fullName: sandboxUser, imageUrl: null }} 
+        onLogout={() => {
+          localStorage.removeItem('budgetify_sandbox_logged_in');
+          setSandboxLoggedIn(false);
+        }}
+      />
+    );
+  }
+
+  // Under Clerk, wrap rendering in SignedIn / SignedOut flows
+  return (
+    <>
+      <SignedIn>
+        <ClerkMainWrapper />
+      </SignedIn>
+      <SignedOut>
+        <ClerkLoginScreen />
+      </SignedOut>
+    </>
+  );
+}
+
+// Helper Clerk wrapper to inject hooks correctly under context
+const ClerkMainWrapper = () => {
+  const { user } = useUser();
+  const { signOut } = useClerk();
+  return (
+    <BudgetifyMain 
+      isClerk={true} 
+      user={user || { fullName: 'Clerk User', imageUrl: null }} 
+      onLogout={() => signOut()} 
+    />
+  );
+};
+
+// Custom Landing page for Clerk
+const ClerkLoginScreen = () => {
+  return (
+    <div className="auth-gate-wrapper animate-fade-in">
+      <div className="auth-card">
+        <div className="auth-header-logo">B</div>
+        <h2 className="auth-title">Budgetify Suite</h2>
+        <p className="auth-subtitle">Elevate your financial control with the premium budget planning suite</p>
+        
+        <div className="auth-btn-group">
+          <SignInButton mode="modal">
+            <button className="btn-primary" style={{ width: '100%' }}>Sign In to Account</button>
+          </SignInButton>
+          
+          <SignUpButton mode="modal">
+            <button className="btn-secondary" style={{ width: '100%' }}>Create New Account</button>
+          </SignUpButton>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Custom Sandbox setup warning page
+const SandboxLogin = ({ onLogin }) => {
+  const [name, setName] = useState('');
+  
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (name.trim()) {
+      onLogin(name.trim());
+    }
+  };
+
+  return (
+    <div className="auth-gate-wrapper animate-fade-in">
+      <div className="auth-card">
+        <div className="auth-header-logo">B</div>
+        <h2 className="auth-title">Budgetify Sandbox</h2>
+        <p className="auth-subtitle">Elevate your financial control with the premium budget planning suite</p>
+        
+        <div className="auth-sandbox-badge">
+          <strong>⚠️ Authentication Setup Banner</strong>
+          <span>
+            <code>VITE_CLERK_PUBLISHABLE_KEY</code> is not configured. Running in Sandbox. Sign-ins will simulate locally.
+          </span>
+        </div>
+
+        <form onSubmit={handleSubmit} className="auth-btn-group">
+          <div className="form-group" style={{ textAlign: 'left', marginBottom: '16px' }}>
+            <label className="form-label">Developer Guest Name</label>
+            <input
+              type="text"
+              placeholder="e.g. Guest User"
+              className="form-input"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
+          
+          <button type="submit" className="btn-primary" style={{ width: '100%' }}>
+            Enter Local Sandbox
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
+// CORE APP IMPLEMENTATION MODULE
+// ==========================================
+function BudgetifyMain({ isClerk, user, onLogout }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [currency, setCurrency] = useState(() => localStorage.getItem('budgetify_currency') || 'Rwf');
   const [darkMode, setDarkMode] = useState(() => {
@@ -119,7 +252,6 @@ function App() {
   const [budgets, setBudgets] = useState(() => {
     const saved = localStorage.getItem('budgetify_budgets');
     if (saved !== null) return JSON.parse(saved);
-    // Legacy support
     const oldBudgets = localStorage.getItem('budgetPlanner_budgets');
     if (oldBudgets !== null) return JSON.parse(oldBudgets);
     const oldBudget = localStorage.getItem('budgetPlanner_budget');
@@ -130,7 +262,6 @@ function App() {
   const [transactions, setTransactions] = useState(() => {
     const saved = localStorage.getItem('budgetify_transactions');
     if (saved !== null) return JSON.parse(saved);
-    // Legacy support & migrator
     const oldExpenses = localStorage.getItem('budgetPlanner_expenses');
     if (oldExpenses !== null) {
       const expenses = JSON.parse(oldExpenses);
@@ -159,7 +290,7 @@ function App() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthYYYYMM());
   const [isAddingMonth, setIsAddingMonth] = useState(false);
 
-  // Form Inputs & Overlays states
+  // Modals UI states
   const [txModalOpen, setTxModalOpen] = useState(false);
   const [txEditId, setTxEditId] = useState(null);
   const [txType, setTxType] = useState('expense');
@@ -187,20 +318,18 @@ function App() {
 
   const [goalTxModalOpen, setGoalTxModalOpen] = useState(false);
   const [goalTxAmount, setGoalTxAmount] = useState('');
-  const [goalTxType, setGoalTxType] = useState('deposit'); // deposit or withdraw
+  const [goalTxType, setGoalTxType] = useState('deposit');
   const [activeGoalId, setActiveGoalId] = useState(null);
 
-  // Transactions Tab filters
+  // Log filter options
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState('all'); // all, income, expense
+  const [filterType, setFilterType] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
-  const [sortBy, setSortBy] = useState('date-desc'); // date-desc, date-asc, amount-desc, amount-asc
+  const [sortBy, setSortBy] = useState('date-desc');
 
   const fileInputRef = useRef(null);
 
-  // ==========================================
-  // SYNC & SIDE EFFECTS
-  // ==========================================
+  // Sync back to local preferences
   useEffect(() => {
     localStorage.setItem('budgetify_currency', currency);
   }, [currency]);
@@ -230,9 +359,11 @@ function App() {
     }
   }, [darkMode]);
 
-  // ==========================================
-  // CALCULATIONS & SELECTORS
-  // ==========================================
+  // Adjust categories default select values safely
+  const activeMonthList = Object.keys(categories);
+  const safeDefaultCategory = activeMonthList.length > 0 ? activeMonthList[0] : 'Food';
+
+  // Available navigator list
   const monthsFromTxs = transactions.map(t => getTransactionMonth(t));
   const monthsFromBudgets = Object.keys(budgets);
   const availableMonths = Array.from(new Set([...monthsFromTxs, ...monthsFromBudgets, getCurrentMonthYYYYMM()]));
@@ -249,7 +380,7 @@ function App() {
 
   const activeBudget = getActiveBudget();
 
-  // Metrics calculations
+  // Metrics
   const totalIncome = filteredMonthTxs
     .filter(t => t.type === 'income')
     .reduce((acc, c) => acc + parseFloat(c.amount || 0), 0);
@@ -271,13 +402,9 @@ function App() {
     }) + ' ' + symbol;
   };
 
-  // ==========================================
-  // INSIGHTS GENERATION ENGINE
-  // ==========================================
+  // Finance copilot alerts
   const getInsights = () => {
     const list = [];
-    
-    // Remaining budget warning
     if (remaining < 0) {
       list.push({
         type: 'danger',
@@ -292,7 +419,6 @@ function App() {
       });
     }
 
-    // Cashflow evaluation
     if (netCashflow < 0) {
       list.push({
         type: 'danger',
@@ -307,7 +433,6 @@ function App() {
       });
     }
 
-    // Category-specific budget breach check
     const catExpenses = filteredMonthTxs
       .filter(t => t.type === 'expense')
       .reduce((acc, curr) => {
@@ -334,15 +459,12 @@ function App() {
         text: "You're in control! No budget breaches or negative cashflow detected for this month. Looking healthy!"
       });
     }
-
     return list;
   };
 
   const currentInsights = getInsights();
 
-  // ==========================================
-  // ACTIONS & HANDLERS
-  // ==========================================
+  // Handlers
   const handleEditBudget = () => {
     setBudgetInput(activeBudget.toString());
     setIsEditingBudget(true);
@@ -351,22 +473,17 @@ function App() {
   const handleSaveBudget = () => {
     const val = parseFloat(budgetInput);
     if (!isNaN(val) && val >= 0) {
-      setBudgets(prev => ({
-        ...prev,
-        [selectedMonth]: val
-      }));
+      setBudgets(prev => ({ ...prev, [selectedMonth]: val }));
     }
     setIsEditingBudget(false);
   };
 
-  // Transaction form handling
   const handleOpenAddTx = () => {
     setTxEditId(null);
     setTxType('expense');
     setTxDesc('');
     setTxAmount('');
-    const list = Object.keys(categories);
-    setTxCategory(list.length > 0 ? list[0] : 'Food');
+    setTxCategory(safeDefaultCategory);
     setTxDatetime(getCurrentDateTimeLocal());
     setTxModalOpen(true);
   };
@@ -376,8 +493,7 @@ function App() {
     setTxType(tx.type || 'expense');
     setTxDesc(tx.description);
     setTxAmount(tx.amount.toString());
-    setTxCategory(tx.category || 'Food');
-    
+    setTxCategory(tx.category || safeDefaultCategory);
     if (tx.timestamp) {
       const d = new Date(tx.timestamp);
       d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
@@ -426,7 +542,6 @@ function App() {
     }
   };
 
-  // Savings goals CRUD
   const handleOpenAddGoal = () => {
     setGoalEditId(null);
     setGoalName('');
@@ -486,7 +601,6 @@ function App() {
     }
   };
 
-  // Savings Goal Quick Contribute Form
   const handleOpenGoalTx = (goalId, type) => {
     setActiveGoalId(goalId);
     setGoalTxType(type);
@@ -509,12 +623,10 @@ function App() {
       newCurrent = Math.max(0, newCurrent - amount);
     }
 
-    // Save contribution
     setSavingsGoals(savingsGoals.map(g =>
       g.id === activeGoalId ? { ...g, current: newCurrent } : g
     ));
 
-    // Create automatic matching transaction
     const syncTx = {
       id: Date.now().toString(),
       type: goalTxType === 'deposit' ? 'expense' : 'income',
@@ -524,15 +636,12 @@ function App() {
       timestamp: new Date().toISOString()
     };
     setTransactions([syncTx, ...transactions]);
-
     setGoalTxModalOpen(false);
   };
 
-  // Dynamic custom categories CRUD
   const handleSaveCategory = (e) => {
     e.preventDefault();
     if (!catName.trim()) return;
-
     const targetKey = catName.trim();
     const budgetVal = parseFloat(catBudget || 0);
 
@@ -544,37 +653,33 @@ function App() {
         budget: isNaN(budgetVal) ? 0 : budgetVal
       }
     }));
-
     setCatModalOpen(false);
     setCatName('');
     setCatBudget('');
   };
 
   const handleDeleteCategory = (key) => {
-    if (window.confirm(`Are you sure you want to delete the category "${key}"? Existing transactions under this category won't be deleted but will stay unassigned.`)) {
+    if (window.confirm(`Delete "${key}" category? Current records will stay unassigned.`)) {
       const updated = { ...categories };
       delete updated[key];
       setCategories(updated);
     }
   };
 
-  // Clear Month Txs
   const handleClearMonth = () => {
-    if (window.confirm("Are you sure you want to permanently delete all transactions for this selected month?")) {
+    if (window.confirm("Permanently delete all transactions for the active selected month?")) {
       setTransactions(transactions.filter(t => getTransactionMonth(t) !== selectedMonth));
     }
   };
 
-  // Export CSV
   const handleExportCSV = () => {
     if (filteredMonthTxs.length === 0) return;
-
     const headers = ["Type", "Date", "Description", "Category", `Amount (${currency})`];
     const csvContent = [
       headers.join(","),
       ...filteredMonthTxs.map(t => {
         const desc = `"${t.description.replace(/"/g, '""')}"`;
-        const date = t.timestamp ? new Date(t.timestamp).toLocaleString() : "Unknown Date";
+        const date = t.timestamp ? new Date(t.timestamp).toLocaleString() : "N/A";
         return `"${t.type || 'expense'}","${date}",${desc},"${t.category || 'Other'}",${t.amount}`;
       })
     ].join("\n");
@@ -589,9 +694,7 @@ function App() {
     document.body.removeChild(link);
   };
 
-  // ==========================================
-  // BACKUP & RESTORE / SAMPLING ACTIONS
-  // ==========================================
+  // Backup restore
   const handleExportBackup = () => {
     const data = {
       budgets,
@@ -630,10 +733,10 @@ function App() {
           alert("Backup successfully restored!");
           setActiveTab('dashboard');
         } else {
-          alert("Invalid backup file structure: missing transactions or budgets!");
+          alert("Invalid backup JSON structure.");
         }
       } catch (err) {
-        alert("Failed to parse backup JSON file: " + err.message);
+        alert("Failed to parse backup: " + err.message);
       }
     };
     reader.readAsText(file);
@@ -647,13 +750,11 @@ function App() {
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     })();
 
-    // Populate budgets
     const demoBudgets = {
       [thisMonth]: 800000,
       [prevMonth]: 750000
     };
 
-    // Populate dynamic categories
     const demoCategories = {
       Housing: { color: '#3b82f6', icon: '🏠', budget: 450000 },
       Food: { color: '#f43f5e', icon: '🍔', budget: 150000 },
@@ -663,21 +764,16 @@ function App() {
       Investments: { color: '#10b981', icon: '📈', budget: 100000 }
     };
 
-    // Populate savings goals
     const demoGoals = [
       { id: '1', name: 'Emergency Fund', target: 2000000, current: 1200000, deadline: '2026-12-31', color: '#10b981' },
       { id: '2', name: 'MacBook Pro 16', target: 2500000, current: 800000, deadline: '2026-09-01', color: '#6366f1' },
       { id: '3', name: 'Summer Travel', target: 1000000, current: 950000, deadline: '2026-07-15', color: '#f59e0b' }
     ];
 
-    // Populate transactions (mix of income and expense for this month and previous)
     const demoTxs = [
-      // Income
       { id: 't1', type: 'income', description: 'Monthly Core Salary', amount: '1200000.00', category: 'Income', timestamp: `${thisMonth}-01T09:00:00.000Z` },
       { id: 't2', type: 'income', description: 'Freelance Design Consulting', amount: '250000.00', category: 'Income', timestamp: `${thisMonth}-10T14:30:00.000Z` },
       { id: 't3', type: 'income', description: 'Dividends & Stock Cashout', amount: '60000.00', category: 'Income', timestamp: `${thisMonth}-18T10:00:00.000Z` },
-      
-      // Expenses this month
       { id: 't4', type: 'expense', description: 'Apartment Rent payment', amount: '450000.00', category: 'Housing', timestamp: `${thisMonth}-02T10:00:00.000Z` },
       { id: 't5', type: 'expense', description: 'Supermarket Grocery haul', amount: '78000.00', category: 'Food', timestamp: `${thisMonth}-05T18:15:00.000Z` },
       { id: 't6', type: 'expense', description: 'Power grid recharge & Water bill', amount: '65000.00', category: 'Utilities', timestamp: `${thisMonth}-06T11:20:00.000Z` },
@@ -688,8 +784,6 @@ function App() {
       { id: 'ta2', type: 'expense', description: 'Regular gym subscription renewal', amount: '30000.00', category: 'Entertainment', timestamp: `${thisMonth}-20T08:00:00.000Z` },
       { id: 'ta3', type: 'expense', description: 'Uber rides to downtown office', amount: '22000.00', category: 'Transport', timestamp: `${thisMonth}-21T08:45:00.000Z` },
       { id: 'ta4', type: 'expense', description: 'S&P 500 Index fund investment', amount: '80000.00', category: 'Investments', timestamp: `${thisMonth}-22T12:00:00.000Z` },
-
-      // Previous month records
       { id: 'tp1', type: 'income', description: 'Salary', amount: '1200000.00', category: 'Income', timestamp: `${prevMonth}-01T09:00:00.000Z` },
       { id: 'tp2', type: 'expense', description: 'Rent', amount: '450000.00', category: 'Housing', timestamp: `${prevMonth}-02T10:00:00.000Z` },
       { id: 'tp3', type: 'expense', description: 'Groceries', amount: '90000.00', category: 'Food', timestamp: `${prevMonth}-08T15:00:00.000Z` },
@@ -702,11 +796,11 @@ function App() {
     setTransactions(demoTxs);
     setSelectedMonth(thisMonth);
     setActiveTab('dashboard');
-    alert("Premium demo data loaded successfully! Welcome to Budgetify.");
+    alert("Demo playground successfully loaded! Enjoy testing Budgetify.");
   };
 
   const handleResetAll = () => {
-    if (window.confirm("WARNING: This will permanently delete all transactions, budgets, categories, and savings goals. Are you sure you want to proceed?")) {
+    if (window.confirm("WARNING: This will permanently wipe all dynamic records. Proceed?")) {
       localStorage.clear();
       setBudgets({ [getCurrentMonthYYYYMM()]: 800000 });
       setTransactions([]);
@@ -720,29 +814,19 @@ function App() {
     }
   };
 
-  // ==========================================
-  // TRANSACTION LOG FILTERS & SORT LOGIC
-  // ==========================================
+  // Process transaction sorting
   const getProcessedTransactions = () => {
     let list = [...transactions];
-
-    // Search query filter
     if (searchTerm.trim() !== '') {
       const q = searchTerm.toLowerCase();
       list = list.filter(t => t.description.toLowerCase().includes(q));
     }
-
-    // Type filter
     if (filterType !== 'all') {
       list = list.filter(t => t.type === filterType);
     }
-
-    // Category filter
     if (filterCategory !== 'all') {
       list = list.filter(t => t.category === filterCategory);
     }
-
-    // Sort order
     list.sort((a, b) => {
       const dateA = new Date(a.timestamp || 0);
       const dateB = new Date(b.timestamp || 0);
@@ -761,27 +845,19 @@ function App() {
           return dateB - dateA;
       }
     });
-
     return list;
   };
 
   const processedTransactions = getProcessedTransactions();
 
-  // ==========================================
-  // VIEW RENDERS
-  // ==========================================
-  
-  // Tab 1: Dashboard View
+  // Tab views
   const renderDashboard = () => {
     return (
       <div className="animate-fade-in">
-        {/* Metrics Overview Grid */}
         <div className="metrics-grid">
           <div className="metric-card">
             <div>
-              <div className="metric-title">
-                <span>Available Monthly Budget</span>
-              </div>
+              <div className="metric-title">Available Monthly Budget</div>
               <div className="metric-value budget">
                 {isEditingBudget ? (
                   <input
@@ -840,15 +916,12 @@ function App() {
                 {formatValue(remaining)}
               </div>
             </div>
-            <div className="metric-meta">
-              Remaining pocket balance
-            </div>
+            <div className="metric-meta">Remaining pocket balance</div>
           </div>
         </div>
 
-        {/* Budget Progress Bar */}
         <div className="glass-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', justifycontent: 'space-between', marginBottom: '8px', justifyContent: 'space-between' }}>
             <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-secondary)' }}>MONTHLY BUDGET USAGE</span>
             <span style={{ fontSize: '13px', fontWeight: '800', color: spentPercentage > 100 ? 'var(--danger)' : 'var(--primary)' }}>
               {spentPercentage.toFixed(1)}%
@@ -871,9 +944,7 @@ function App() {
           </div>
         </div>
 
-        {/* Two-Column split dashboard details */}
         <div className="dashboard-layout">
-          {/* Column Left: Visual breakdown & Analytics */}
           <div className="glass-card">
             <h3 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '20px', letterSpacing: '-0.25px' }}>
               Category Outflow Analysis
@@ -881,9 +952,7 @@ function App() {
             <DonutChart expenses={filteredMonthTxs.filter(t => t.type === 'expense')} categories={categories} currencySymbol={CURRENCIES[currency]?.symbol || currency} />
           </div>
 
-          {/* Column Right: Actionable automated insights & Recent Txs */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            {/* AI Assistant Insights Box */}
             <div className="glass-card" style={{ marginBottom: 0 }}>
               <h3 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '16px', letterSpacing: '-0.25px' }}>
                 Finance Copilot Insights
@@ -898,7 +967,6 @@ function App() {
               </div>
             </div>
 
-            {/* Savings Quick Tracker Widget */}
             <div className="glass-card" style={{ marginBottom: 0 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h3 style={{ fontSize: '16px', fontWeight: '800', letterSpacing: '-0.25px' }}>Savings Goals</h3>
@@ -931,11 +999,9 @@ function App() {
     );
   };
 
-  // Tab 2: Rich Transactions View
   const renderTransactions = () => {
     return (
       <div className="animate-fade-in">
-        {/* Advanced Filters block */}
         <div className="filter-bar">
           <div className="search-input-wrapper">
             <SearchIcon />
@@ -982,7 +1048,6 @@ function App() {
           )}
         </div>
 
-        {/* Transaction log items */}
         <div className="glass-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h3 style={{ fontSize: '16px', fontWeight: '800' }}>Active Transaction Log</h3>
@@ -1064,7 +1129,6 @@ function App() {
     );
   };
 
-  // Tab 3: Savings Goals Tracker View
   const renderSavings = () => {
     return (
       <div className="animate-fade-in">
@@ -1079,7 +1143,7 @@ function App() {
           <div className="glass-card" style={{ textAlign: 'center', padding: '40px' }}>
             <p style={{ fontSize: '32px', marginBottom: '12px' }}>🐷</p>
             <h4 style={{ fontWeight: '800', fontSize: '16px', marginBottom: '8px' }}>No savings goals created yet</h4>
-            <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Define custom saving goals like purchasing a laptop or setting aside emergency money.</p>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Define custom targets like purchasing an emergency fund pool.</p>
             <button className="btn-primary" style={{ marginTop: '16px' }} onClick={handleOpenAddGoal}>
               Create Savings Goal
             </button>
@@ -1147,7 +1211,6 @@ function App() {
     );
   };
 
-  // Tab 4: Dynamic Categories & Target Budget limits
   const renderCategories = () => {
     return (
       <div className="animate-fade-in">
@@ -1193,20 +1256,14 @@ function App() {
     );
   };
 
-  // Tab 5: Settings Panel
   const renderSettings = () => {
     return (
       <div className="animate-fade-in">
         <div className="glass-card">
           <h3 className="settings-section-title">General Preferences</h3>
-          
           <div className="form-group" style={{ maxWidth: '300px' }}>
             <label className="form-label">Preferred Currency</label>
-            <select
-              className="form-select"
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-            >
+            <select className="form-select" value={currency} onChange={(e) => setCurrency(e.target.value)}>
               {Object.keys(CURRENCIES).map(key => (
                 <option key={key} value={key}>
                   {CURRENCIES[key].name} ({CURRENCIES[key].symbol})
@@ -1239,7 +1296,7 @@ function App() {
               <div>
                 <h4 style={{ fontWeight: '800', fontSize: '14px', marginBottom: '4px' }}>Data Backup (Export)</h4>
                 <p className="settings-action-desc">
-                  Export all dynamic records, budgets, and savings targets securely into a local JSON archive.
+                  Export all dynamic records securely into a local JSON archive.
                 </p>
               </div>
               <button className="btn-secondary" onClick={handleExportBackup}>
@@ -1254,13 +1311,7 @@ function App() {
                   Restore previous dynamic state configurations from your exported JSON backup file.
                 </p>
               </div>
-              <input
-                type="file"
-                accept=".json"
-                ref={fileInputRef}
-                style={{ display: 'none' }}
-                onChange={handleImportBackup}
-              />
+              <input type="file" accept=".json" ref={fileInputRef} style={{ display: 'none' }} onChange={handleImportBackup} />
               <button className="btn-secondary" onClick={() => fileInputRef.current.click()}>
                 Import JSON Backup
               </button>
@@ -1280,26 +1331,51 @@ function App() {
           </div>
         </div>
 
-        <div className="glass-card" style={{ textAlign: 'center', padding: '20px' }}>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-            Budgetify Suite • Designed for professional financial planning
+        <div className="glass-card" style={{ textAlign: 'center', padding: '24px 20px', border: '1px solid var(--border-color)' }}>
+          <h4 style={{ fontWeight: '800', fontSize: '14px', marginBottom: '6px' }}>Account Status</h4>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+            Logged in as: <strong>{user.fullName}</strong> {isClerk ? '(Verified via Clerk)' : '(Sandbox Mode)'}
           </p>
+          <button className="btn-danger" onClick={onLogout} style={{ padding: '8px 20px', fontSize: '13px', borderRadius: '8px' }}>
+            🚪 Sign Out of Account
+          </button>
         </div>
       </div>
     );
   };
 
-  // ==========================================
-  // MAIN COMPONENT STRUCTURE
-  // ==========================================
   return (
     <div className="app-frame">
-      {/* Sidebar navigation panel - Desktop view */}
       <aside className="app-sidebar">
         <div>
           <div className="brand-section">
             <div className="brand-logo">B</div>
             <div className="brand-name">Budgetify</div>
+            
+            {/* Desktop User Avatar */}
+            <div style={{ marginLeft: 'auto' }}>
+              {isClerk ? (
+                <UserButton afterSignOutUrl="/" />
+              ) : (
+                <div 
+                  className="category-icon-box" 
+                  style={{ 
+                    width: 32, 
+                    height: 32, 
+                    borderRadius: '50%', 
+                    fontSize: '14px', 
+                    background: 'var(--primary-light)', 
+                    color: 'var(--primary)',
+                    fontWeight: 'bold',
+                    cursor: 'pointer'
+                  }}
+                  onClick={onLogout}
+                  title="Click to logout of Sandbox"
+                >
+                  {user.fullName ? user.fullName[0].toUpperCase() : 'G'}
+                </div>
+              )}
+            </div>
           </div>
 
           <nav>
@@ -1334,7 +1410,6 @@ function App() {
         </div>
 
         <div className="sidebar-footer">
-          {/* Month Navigator Switcher */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-muted)' }}>ACTIVE MONTH</span>
             {isAddingMonth ? (
@@ -1380,18 +1455,21 @@ function App() {
             )}
           </div>
 
-          {/* Dark theme toggler card */}
           <div className="dark-mode-card">
             <span>Dark mode Theme</span>
             <label className="theme-switch">
-              <input
-                type="checkbox"
-                checked={darkMode}
-                onChange={() => setDarkMode(!darkMode)}
-              />
+              <input type="checkbox" checked={darkMode} onChange={() => setDarkMode(!darkMode)} />
               <span className="slider-switch" />
             </label>
           </div>
+
+          <button 
+            className="btn-danger" 
+            style={{ width: '100%', padding: '10px', fontSize: '13px', borderRadius: '12px', marginTop: '8px', display: 'flex', justifyContent: 'center' }}
+            onClick={onLogout}
+          >
+            Sign Out
+          </button>
 
           <footer style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600', marginTop: '8px', textAlign: 'center' }}>
             Created by{' '}
@@ -1399,24 +1477,10 @@ function App() {
               href="https://github.com/nshh123"
               target="_blank"
               rel="noopener noreferrer"
-              style={{
-                color: 'var(--primary)',
-                textDecoration: 'none',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '3px',
-                fontWeight: '700'
-              }}
+              style={{ color: 'var(--primary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px', fontWeight: '700' }}
             >
               @nshh123
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="11"
-                height="11"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                aria-label="GitHub"
-              >
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-label="GitHub">
                 <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
               </svg>
             </a>
@@ -1424,9 +1488,7 @@ function App() {
         </div>
       </aside>
 
-      {/* Main panel content box wrapper */}
       <main className="app-main">
-        {/* Dynamic header elements per tab */}
         <div className="view-header">
           <div>
             <span className="view-subtitle">{activeTab.toUpperCase() === 'DASHBOARD' ? 'FINANCIAL SUMMARY' : 'BUDGETIFY SUITE'}</span>
@@ -1439,28 +1501,53 @@ function App() {
             </h2>
           </div>
 
-          {/* Month select navigator for mobile & header */}
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-muted)' }} className="app-sidebar-hidden">
-              Active month:
-            </span>
-            <select
-              className="form-select filter-select"
-              style={{ width: 'auto', padding: '6px 28px 6px 12px', fontSize: '13px', backgroundPosition: 'right 10px center' }}
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-            >
-              {availableMonths.map(m => {
-                const [year, month] = m.split('-');
-                const date = new Date(year, parseInt(month) - 1);
-                const monthName = date.toLocaleString('default', { month: 'long', year: 'numeric' });
-                return <option key={m} value={m}>{monthName}</option>;
-              })}
-            </select>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-muted)' }} className="app-sidebar-hidden">
+                Active month:
+              </span>
+              <select
+                className="form-select filter-select"
+                style={{ width: 'auto', padding: '6px 28px 6px 12px', fontSize: '13px', backgroundPosition: 'right 10px center' }}
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+              >
+                {availableMonths.map(m => {
+                  const [year, month] = m.split('-');
+                  const date = new Date(year, parseInt(month) - 1);
+                  const monthName = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+                  return <option key={m} value={m}>{monthName}</option>;
+                })}
+              </select>
+            </div>
+
+            {/* Mobile Header User Profile */}
+            <div className="mobile-header-profile">
+              {isClerk ? (
+                <UserButton afterSignOutUrl="/" />
+              ) : (
+                <div 
+                  className="category-icon-box" 
+                  style={{ 
+                    width: 32, 
+                    height: 32, 
+                    borderRadius: '50%', 
+                    fontSize: '14px', 
+                    background: 'var(--primary-light)', 
+                    color: 'var(--primary)',
+                    fontWeight: 'bold',
+                    cursor: 'pointer'
+                  }}
+                  onClick={onLogout}
+                  title="Click to logout of Sandbox"
+                >
+                  {user.fullName ? user.fullName[0].toUpperCase() : 'G'}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Dynamic tabs controller switcher */}
         {activeTab === 'dashboard' && renderDashboard()}
         {activeTab === 'transactions' && renderTransactions()}
         {activeTab === 'savings' && renderSavings()}
@@ -1468,12 +1555,10 @@ function App() {
         {activeTab === 'settings' && renderSettings()}
       </main>
 
-      {/* Floating Action Button (FAB) for speedy input actions */}
       <button className="fab-btn" onClick={handleOpenAddTx} title="Add transaction entry" aria-label="Add transaction entry">
         <PlusIcon />
       </button>
 
-      {/* Bottom bar navigation menu - Mobile view */}
       <nav className="bottom-nav">
         <button className={`bottom-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
           <DashboardIcon /> Summary
@@ -1492,11 +1577,7 @@ function App() {
         </button>
       </nav>
 
-      {/* ==========================================
-          DYNAMIC OVERLAY DIALOGS / FORM MODALS
-          ========================================== */}
-      
-      {/* 1. Transaction Form Modal */}
+      {/* OVERLAY DIALOGS */}
       {txModalOpen && (
         <div className="modal-overlay" onClick={() => setTxModalOpen(false)}>
           <div className="modal-content animate-fade-in" onClick={(e) => e.stopPropagation()}>
@@ -1540,7 +1621,7 @@ function App() {
                 <label className="form-label">Transaction Description</label>
                 <input
                   type="text"
-                  placeholder="e.g. Salary core deposit, Supermarket grocer"
+                  placeholder="e.g. Core salary, grocery shopping"
                   className="form-input"
                   value={txDesc}
                   onChange={(e) => setTxDesc(e.target.value)}
@@ -1602,7 +1683,6 @@ function App() {
         </div>
       )}
 
-      {/* 2. Savings Goal CRUD Modal */}
       {goalModalOpen && (
         <div className="modal-overlay" onClick={() => setGoalModalOpen(false)}>
           <div className="modal-content animate-fade-in" onClick={(e) => e.stopPropagation()}>
@@ -1614,7 +1694,7 @@ function App() {
                 <label className="form-label">Goal Target Label</label>
                 <input
                   type="text"
-                  placeholder="e.g. Vacation Fund, MacBook Air"
+                  placeholder="e.g. Emergency Fund"
                   className="form-input"
                   value={goalName}
                   onChange={(e) => setGoalName(e.target.value)}
@@ -1623,7 +1703,7 @@ function App() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Target Target Cap Amount ({CURRENCIES[currency]?.symbol || currency})</label>
+                <label className="form-label">Target Target Amount ({CURRENCIES[currency]?.symbol || currency})</label>
                 <input
                   type="number"
                   placeholder="e.g. 1000000"
@@ -1649,12 +1729,7 @@ function App() {
 
               <div className="form-group">
                 <label className="form-label">Deadline Target Date</label>
-                <input
-                  type="date"
-                  className="form-input"
-                  value={goalDeadline}
-                  onChange={(e) => setGoalDeadline(e.target.value)}
-                />
+                <input type="date" className="form-input" value={goalDeadline} onChange={(e) => setGoalDeadline(e.target.value)} />
               </div>
 
               <div className="form-group">
@@ -1691,7 +1766,6 @@ function App() {
         </div>
       )}
 
-      {/* 3. Savings Goal Contribute Modal */}
       {goalTxModalOpen && (
         <div className="modal-overlay" onClick={() => setGoalTxModalOpen(false)}>
           <div className="modal-content animate-fade-in" onClick={(e) => e.stopPropagation()}>
@@ -1705,7 +1779,7 @@ function App() {
                 <label className="form-label">Amount Value ({CURRENCIES[currency]?.symbol || currency})</label>
                 <input
                   type="number"
-                  placeholder="Enter contribution value"
+                  placeholder="Enter transfer value"
                   min="0.01"
                   step="0.01"
                   className="form-input"
@@ -1733,7 +1807,6 @@ function App() {
         </div>
       )}
 
-      {/* 4. Category Add Modal */}
       {catModalOpen && (
         <div className="modal-overlay" onClick={() => setCatModalOpen(false)}>
           <div className="modal-content animate-fade-in" onClick={(e) => e.stopPropagation()}>
@@ -1745,7 +1818,7 @@ function App() {
                 <label className="form-label">Category Name Tag</label>
                 <input
                   type="text"
-                  placeholder="e.g. Subscriptions, Sub-let"
+                  placeholder="e.g. Subscriptions"
                   className="form-input"
                   value={catName}
                   onChange={(e) => setCatName(e.target.value)}
@@ -1754,7 +1827,7 @@ function App() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Target Budget Target Limit Cap ({CURRENCIES[currency]?.symbol || currency})</label>
+                <label className="form-label">Target Budget Cap ({CURRENCIES[currency]?.symbol || currency})</label>
                 <input
                   type="number"
                   placeholder="e.g. 50000 (Optional)"
@@ -1782,7 +1855,7 @@ function App() {
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        justifycontent: 'center'
+                        justifyContent: 'center'
                       }}
                       onClick={() => setCatIcon(emoji)}
                     >
