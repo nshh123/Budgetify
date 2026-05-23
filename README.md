@@ -1,4 +1,4 @@
-# <p align="center"><img src="./src/assets/logo.svg" alt="Budgetify Logo" width="64" height="64" style="vertical-align: middle; margin-right: 12px;" /><br>💳 Budgetify</p>
+# <p align="center"><img src="./fav.jpg" alt="Budgetify Logo" width="64" height="64" style="border-radius: 12px; vertical-align: middle; margin-right: 12px;" /><br>💳 Budgetify</p>
 <p align="center"><strong>Premium Personal Financial Suite</strong></p>
 
 <p align="center">
