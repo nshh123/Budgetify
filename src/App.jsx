@@ -1332,15 +1332,29 @@ function BudgetifyMain({ isClerk, user, onLogout }) {
       <div className="animate-fade-in">
         <div className="glass-card">
           <h3 className="settings-section-title">General Preferences</h3>
-          <div className="form-group" style={{ maxWidth: '300px' }}>
-            <label className="form-label">Preferred Currency</label>
-            <select className="form-select" value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {Object.keys(CURRENCIES).map(key => (
-                <option key={key} value={key}>
-                  {CURRENCIES[key].name} ({CURRENCIES[key].symbol})
-                </option>
-              ))}
-            </select>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className="form-group" style={{ maxWidth: '300px', margin: 0 }}>
+              <label className="form-label">Preferred Currency</label>
+              <select className="form-select" value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                {Object.keys(CURRENCIES).map(key => (
+                  <option key={key} value={key}>
+                    {CURRENCIES[key].name} ({CURRENCIES[key].symbol})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group" style={{ maxWidth: '300px', margin: 0 }}>
+              <label className="form-label">Display Theme</label>
+              <div className="dark-mode-card" style={{ margin: 0, padding: '12px 16px', background: 'var(--input-bg)', border: '1px solid var(--border-color)' }}>
+                <span>Dark Mode</span>
+                <label className="theme-switch">
+                  <input type="checkbox" checked={darkMode} onChange={() => setDarkMode(!darkMode)} />
+                  <span className="slider-switch" />
+                </label>
+              </div>
+            </div>
           </div>
         </div>
 
