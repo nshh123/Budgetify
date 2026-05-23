@@ -28,7 +28,7 @@
 
 <p align="center">
   <kbd>
-    <img src="https://images.unsplash.com/photo-1616077168079-7e09a677fb2c?auto=format&fit=crop&w=1200&q=80" alt="Budgetify Dashboard Concept" width="100%" style="border-radius: 8px;" />
+    <img src="./scrsht.jpg" alt="Budgetify Dashboard Showcase" width="100%" style="border-radius: 8px;" />
   </kbd>
   <br>
   <em>Figure 1: Immersive glassmorphic dashboard showcasing real-time data streaming and interactive financial components.</em>
