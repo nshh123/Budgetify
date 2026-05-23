@@ -270,6 +270,10 @@ function BudgetifyMain({ isClerk, user, onLogout }) {
       setDeferredPrompt(e);
     };
 
+    if (window.globalDeferredPrompt) {
+      setDeferredPrompt(window.globalDeferredPrompt);
+    }
+
     const handleAppInstalled = () => {
       console.log('PWA was installed');
       setIsStandalone(true);

@@ -16,6 +16,14 @@
     <meta property="og:type" content="website" />
     <meta property="og:image" content="/og-image.png" />
     
+    <script>
+      window.globalDeferredPrompt = null;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        window.globalDeferredPrompt = e;
+      });
+    </script>
+    
     <title>Budgetify — Premium Financial Suite</title>
   </head>
   <body>
