@@ -1,8 +1,11 @@
-const CACHE_NAME = 'budgetify-cache-v2';
+const CACHE_NAME = 'budgetify-cache-v3';
 const ASSETS = [
   '/',
   '/index.html',
-  '/favicon.svg',
+  '/favicon.png',
+  '/pwa-192x192.png',
+  '/pwa-512x512.png',
+  '/apple-touch-icon.png',
   '/manifest.json'
 ];
 
